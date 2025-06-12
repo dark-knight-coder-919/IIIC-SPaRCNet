@@ -168,7 +168,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 print ("device: ", device)
 print ("")
 
-model_cnn = torch.load("./Tools/model_1130.pt", map_location=torch.device('cpu'))
+model_cnn = torch.load("./model_1130.pt", map_location=torch.device('cpu'), weights_only=False)
 model_cnn.eval()
 
 
