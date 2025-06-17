@@ -202,7 +202,6 @@ model_cnn.eval()
 
 # Define the target and desired sampling rate
 target_sampling_rate = 200  # Sampling rate the model was trained on
-ECMO = True
 
 
       
