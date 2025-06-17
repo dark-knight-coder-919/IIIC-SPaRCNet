@@ -2,6 +2,7 @@ import hdf5storage
 import numpy as np
 import re
 from mne.filter import filter_data, notch_filter
+from scipy.signal import resample
 import time
 import numpy as np
 import random
@@ -14,6 +15,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 from collections import Counter
 import os
+import pdb
+
+#find . -name ".DS_Store" -delete
 
 print ("")
 print ("lib finish")
@@ -162,7 +166,12 @@ class DenseNetClassifier(nn.Module):
 		out = self.classifier(features)
 		return out, features
 
-    
+
+def resample_data(data, original_rate, target_rate):
+    num_samples = int(data.shape[1] * (target_rate / original_rate))
+    resampled_data = resample(data, num_samples, axis=1)
+    return resampled_data
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 print ("device: ", device)
@@ -170,6 +179,9 @@ print ("")
 
 model_cnn = torch.load("./model_1130.pt", map_location=torch.device('cpu'), weights_only=False)
 model_cnn.eval()
+
+# Define the target sampling rate
+target_sampling_rate = 200  # Replace with the sampling rate the model was trained on
 
 
       
@@ -187,7 +199,8 @@ print ("")
 
 # file_name_array = np.loadtxt("file_path_24h.txt", delimiter = ',', dtype = np.str)
 
-total_file_list = os.listdir("./Data/Raw/")
+total_file_list = os.listdir("./Data/ecmo/")
+
 
 print ("len(total_file_list): ", len(total_file_list))
 print ("")
@@ -199,6 +212,7 @@ print ("")
 
 
 for t in range(T):
+
     
     print ("***************************************")
     print ("t: ", t)
@@ -207,6 +221,9 @@ for t in range(T):
     
     file_name = total_file_list[t]
     save_name = file_name.rstrip(".mat")
+    name_array = save_name.split("_")
+    sampling_rate = int(name_array[2])
+
 
     if os.path.isfile("./Data/iiic/"+ save_name + "_score.csv"):
         print('--alr done ' + save_name)
@@ -217,7 +234,7 @@ for t in range(T):
         print ("save_name: ", save_name)
         print ("")
 
-        path1 = "./Data/Raw/" + file_name
+        path1 = "./Data/ecmo/" + file_name
         print ("path1: ", path1)
         print ("")
     
@@ -238,11 +255,17 @@ for t in range(T):
         print ("************ filtering")
         print ("")
 
-        X2 = notch_filter(X2, 200, 60, n_jobs=-1, verbose='ERROR')
-        X2 = filter_data(X2, 200, 0.5, 40, n_jobs=-1, verbose='ERROR') 
+        X2 = notch_filter(X2, sampling_rate, 60, n_jobs=-1, verbose='ERROR')
+        X2 = filter_data(X2, sampling_rate, 0.5, 40, n_jobs=-1, verbose='ERROR')
+
+        # Resample the data to the target sampling rate
+        X2 = resample_data(X2, sampling_rate, target_sampling_rate)
 
         print ("X2.shape: ", X2.shape)
-        N = int(X2.shape[1]/400)
+        N = int(X2.shape[1] / (target_sampling_rate / 0.5))  # Adjust the denominator to split the data correctly based on your new rate
+
+        segment_duration_seconds = 10  # Duration of each segment in seconds
+        segment_length = segment_duration_seconds * target_sampling_rate  # Number of samples per segment
 
         print ("N: ", N)
         print ("")
@@ -250,11 +273,11 @@ for t in range(T):
         print ("************ reshaping")
         print ("")
 
-        X3 = np.zeros((N-5,16,2000))
+        X3 = np.zeros((N-5,16,segment_length))
 
         for n in range(N-5):
-            start_sn = n*400
-            end_sn = start_sn + 2000
+            start_sn = n * int(target_sampling_rate / 0.5)  # Adjust the step based on your new rate
+            end_sn = start_sn + segment_length
             x = X2[:,start_sn:end_sn]
             X3[n,:,:] = x
 
@@ -303,10 +326,10 @@ for t in range(T):
                 end_sn = start_sn + batch_size
 
                 X = X_train[start_sn:end_sn,:,:]
-                X_list.append(X)   
+                X_list.append(X)
             if not end_sn == N:
                 X = X_train[end_sn:N,:,:]
-                X_list.append(X)   
+                X_list.append(X)
 
             return (X_list)
 
@@ -320,7 +343,7 @@ for t in range(T):
         print ("K: ", K)
         print ("")
 
-        S_list = list() 
+        S_list = list()
         V_list = list()
 
         for k in range(K):
@@ -351,7 +374,7 @@ for t in range(T):
         S2 = torch.cat(S_list,dim=0)
         prob = F.softmax(S2, 1)
         unlabeled_score = prob.numpy()
-    
+
         print ("")
         print ("unlabeled_score.shape: ", unlabeled_score.shape)
         print ("")
@@ -364,7 +387,7 @@ for t in range(T):
 
         path3 = "./Data/iiic/"+ save_name + "_score.csv"
         np.savetxt(path3, unlabeled_score, delimiter=',')
-    
+
         #path4 = "./Data/iiic/"+ save_name + "_vector.csv"
         #np.savetxt(path4, unlabeled_V, delimiter=',')
 
@@ -373,7 +396,7 @@ for t in range(T):
 
         del X4
         del X_batch_list
-    
+
     print ("")
     print ("Done!")
     print ("")
