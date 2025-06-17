@@ -172,6 +172,26 @@ def resample_data(data, original_rate, target_rate):
     resampled_data = resample(data, num_samples, axis=1)
     return resampled_data
 
+
+def get_unlabeled_batch_list(X_train, batch_size):
+    N = X_train.shape[0]
+    sn_list = list(range(N))
+    K = int(N / batch_size)
+    X_list = list()
+    end_sn = 0
+
+    for k in range(K):
+        start_sn = k * batch_size
+        end_sn = start_sn + batch_size
+
+        X = X_train[start_sn:end_sn, :, :]
+        X_list.append(X)
+    if not end_sn == N:
+        X = X_train[end_sn:N, :, :]
+        X_list.append(X)
+
+    return (X_list)
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 print ("device: ", device)
@@ -180,8 +200,9 @@ print ("")
 model_cnn = torch.load("./model_1130.pt", map_location=torch.device('cpu'), weights_only=False)
 model_cnn.eval()
 
-# Define the target sampling rate
-target_sampling_rate = 200  # Replace with the sampling rate the model was trained on
+# Define the target and desired sampling rate
+target_sampling_rate = 200  # Sampling rate the model was trained on
+ECMO = True
 
 
       
@@ -199,7 +220,7 @@ print ("")
 
 # file_name_array = np.loadtxt("file_path_24h.txt", delimiter = ',', dtype = np.str)
 
-total_file_list = os.listdir("./Data/ecmo/")
+total_file_list = os.listdir("./Data/Raw/")
 
 
 print ("len(total_file_list): ", len(total_file_list))
@@ -218,12 +239,9 @@ for t in range(T):
     print ("t: ", t)
     print ("")
     
-    
+
     file_name = total_file_list[t]
     save_name = file_name.rstrip(".mat")
-    name_array = save_name.split("_")
-    sampling_rate = int(name_array[2])
-
 
     if os.path.isfile("./Data/iiic/"+ save_name + "_score.csv"):
         print('--alr done ' + save_name)
@@ -234,7 +252,7 @@ for t in range(T):
         print ("save_name: ", save_name)
         print ("")
 
-        path1 = "./Data/ecmo/" + file_name
+        path1 = "./Data/Raw/" + file_name
         print ("path1: ", path1)
         print ("")
     
@@ -243,6 +261,8 @@ for t in range(T):
         print ("")
 
         X = mat['data']
+        sampling_rate =  int(mat['Fs'][0][0])
+
         print ("X.shape: ", X.shape)
         print ("")
 
@@ -273,7 +293,7 @@ for t in range(T):
         print ("************ reshaping")
         print ("")
 
-        X3 = np.zeros((N-5,16,segment_length))
+        X3 = np.zeros((N-5,16,segment_length)) #number of bipolar channels is default to 16.
 
         for n in range(N-5):
             start_sn = n * int(target_sampling_rate / 0.5)  # Adjust the step based on your new rate
@@ -311,27 +331,8 @@ for t in range(T):
         print ("X4.shape: ", X4.shape)
         print ("")
 
-
         ######################### evaluation
         batch_size = 1000
-        def get_unlabeled_batch_list(X_train,batch_size):
-            N = X_train.shape[0]
-            sn_list = list(range(N))
-            K = int(N/batch_size)
-            X_list = list()
-            end_sn = 0
-
-            for k in range(K):
-                start_sn = k*batch_size
-                end_sn = start_sn + batch_size
-
-                X = X_train[start_sn:end_sn,:,:]
-                X_list.append(X)
-            if not end_sn == N:
-                X = X_train[end_sn:N,:,:]
-                X_list.append(X)
-
-            return (X_list)
 
         ################### scanning
         model_cnn.eval() #*
