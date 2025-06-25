@@ -219,7 +219,7 @@ print ("")
 
 # file_name_array = np.loadtxt("file_path_24h.txt", delimiter = ',', dtype = np.str)
 
-total_file_list = os.listdir("./Data/Raw/")
+total_file_list = os.listdir("./Data/ecmo/")
 
 
 print ("len(total_file_list): ", len(total_file_list))
@@ -232,6 +232,8 @@ print ("")
 
 
 for t in range(T):
+
+    start_time = time.time()
 
     
     print ("***************************************")
@@ -251,7 +253,7 @@ for t in range(T):
         print ("save_name: ", save_name)
         print ("")
 
-        path1 = "./Data/Raw/" + file_name
+        path1 = "./Data/ecmo/" + file_name
         print ("path1: ", path1)
         print ("")
     
@@ -261,6 +263,7 @@ for t in range(T):
 
         X = mat['data']
         sampling_rate =  int(mat['Fs'][0][0])
+        print ("Sampling rate: ", sampling_rate)
 
         print ("X.shape: ", X.shape)
         print ("")
@@ -400,4 +403,5 @@ for t in range(T):
     print ("")
     print ("Done!")
     print ("")
+    print("--- %s seconds ---" % (time.time() - start_time))
     
