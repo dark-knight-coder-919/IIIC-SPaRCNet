@@ -219,7 +219,10 @@ print ("")
 
 # file_name_array = np.loadtxt("file_path_24h.txt", delimiter = ',', dtype = np.str)
 
-total_file_list = os.listdir("./Data/ecmo/")
+# edit for remote desktop EEG files
+total_file_list = os.listdir("D:\\mauro_proj_files\\ecls\\sparcnet_input\\200\\")
+
+# total_file_list = os.listdir("./Data/Raw/") ORIGINAL
 
 
 print ("len(total_file_list): ", len(total_file_list))
@@ -244,7 +247,7 @@ for t in range(T):
     file_name = total_file_list[t]
     save_name = file_name.rstrip(".mat")
 
-    if os.path.isfile("./Data/iiic/"+ save_name + "_score.csv"):
+    if os.path.isfile("./Data/iiic/ecmo_200"+ save_name + "_score.csv"):
         print('--alr done ' + save_name)
 
     else:
@@ -253,7 +256,8 @@ for t in range(T):
         print ("save_name: ", save_name)
         print ("")
 
-        path1 = "./Data/ecmo/" + file_name
+        #path1 = "./Data/Raw/" + file_name ALSO CHANGED
+        path1 = "D:\\mauro_proj_files\\ecls\\sparcnet_input\\200\\" + file_name
         print ("path1: ", path1)
         print ("")
     
@@ -388,7 +392,7 @@ for t in range(T):
         print ("unlabeled_V.shape: ", unlabeled_V.shape)
         print ("")
 
-        path3 = "./Data/iiic/"+ save_name + "_score.csv"
+        path3 = "./Data/iiic/ecmo_200"+ save_name + "_score.csv"
         np.savetxt(path3, unlabeled_score, delimiter=',')
 
         #path4 = "./Data/iiic/"+ save_name + "_vector.csv"
